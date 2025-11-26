@@ -476,20 +476,40 @@ def main():
                 </div>
             """, unsafe_allow_html=True)
         
-        # Active filters badges
+                # Active filters badges
         st.markdown("#### 🏷️ Filtre Active:")
         
-        filter_html = f"""
-            <div style='margin: 10px 0;'>
-                <span class='filter-badge'>👥 {adults} {'pasager' if adults == 1 else 'pasageri'}</span>
-                <span class='filter-badge'>🎫 {cabin_class}</span>
-                <span class='filter-badge'>💰 {currency}</span>
-                {"<span class='filter-badge' style='background-color: #FF6B6B;'>✈️ DOAR ZBORURI DIRECTE</span>" if non_stop else ""}
-                <span class='filter-badge'>📊 Max {max_results} rezultate</span>
-                {f"<span class='filter-badge'>🔄 Dus-întors {return_date.strftime('%d.%m.%Y')}</span>" if return_date else "<span class='filter-badge'>➡️ Doar dus</span>"}
-            </div>
-        """
-        st.markdown(filter_html, unsafe_allow_html=True)
+        # Display filters as Streamlit components instead of HTML
+        cols = st.columns([1, 1, 1, 1])
+        
+        with cols[0]:
+            st.info(f"👥 {adults} {'pasager' if adults == 1 else 'pasageri'}")
+        
+        with cols[1]:
+            st.info(f"🎫 {cabin_class}")
+        
+        with cols[2]:
+            st.info(f"💰 {currency}")
+        
+        with cols[3]:
+            st.info(f"📊 Max {max_results}")
+        
+        cols2 = st.columns([1, 1, 1])
+        
+        with cols2[0]:
+            if return_date:
+                st.info(f"🔄 Dus-întors {return_date.strftime('%d.%m.%Y')}")
+            else:
+                st.info("➡️ Doar dus")
+        
+        with cols2[1]:
+            if non_stop:
+                st.error("✈️ DOAR ZBORURI DIRECTE")
+            else:
+                st.info("🔄 Cu/fără escale")
+        
+        with cols2[2]:
+            st.info(f"🎫 {cabin_class}")
         
         st.markdown("---")
     
