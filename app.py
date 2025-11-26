@@ -618,19 +618,47 @@ def main():
 def display_results(flights, non_stop_filter=False):
     """Display flight search results"""
     
+    # Debug information
+    total_flights = len(flights)
+    direct_flights_count = len([f for f in flights if f.get('stops', 0) == 0])
+    
+    st.info(f"""
+    📊 **Statistici căutare:**
+    - Total zboruri găsite: **{total_flights}**
+    - Zboruri directe: **{direct_flights_count}**
+    - Zboruri cu escale: **{total_flights - direct_flights_count}**
+    - Filtru "Doar directe" activ: **{'DA ✅' if non_stop_filter else 'NU'}**
+    """)
+    
     # Filter results if non-stop was selected
+    original_count = len(flights)
     if non_stop_filter:
         flights = [f for f in flights if f.get('stops', 0) == 0]
+        st.warning(f"🔍 Filtru activ: Afișez doar {len(flights)} zboruri directe din {original_count} total")
     
     if not flights:
-        st.warning("⚠️ **Nu am găsit zboruri care să corespundă criteriilor tale.**")
-        st.info("""
-        **Sugestii:**
-        - Încearcă alte date
-        - Verifică dacă există zboruri directe pe această rută
-        - Dezactivează filtrul "Doar zboruri directe"
-        - Încearcă aeroporturi alternative din apropiere
-        """)
+        st.error("❌ **Nu am găsit zboruri care să corespundă criteriilor tale.**")
+        
+        if non_stop_filter and direct_flights_count == 0:
+            st.warning(f"""
+            ### ⚠️ Nu există zboruri directe disponibile pe această rută!
+            
+            **Din {original_count} zboruri găsite, niciun zbor nu este direct.**
+            
+            **Ce poți face:**
+            1. ✅ **Dezactivează** filtrul "Doar zboruri directe" din sidebar
+            2. 🔄 Încearcă alte date de călătorie
+            3. ✈️ Verifică aeroporturi alternative din apropiere
+            4. 📅 Încearcă zile diferite ale săptămânii
+            """)
+        else:
+            st.info("""
+            **Sugestii:**
+            - Încearcă alte date
+            - Verifică dacă există zboruri directe pe această rută
+            - Dezactivează filtrul "Doar zboruri directe"
+            - Încearcă aeroporturi alternative din apropiere
+            """)
         return
     
     st.success(f"✅ **Am găsit {len(flights)} zboruri!**")
