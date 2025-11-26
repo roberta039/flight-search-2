@@ -49,36 +49,13 @@ st.markdown("""
         font-weight: bold;
         color: #FF4B4B;
     }
-    .airport-info {
-        font-size: 12px;
-        color: #666;
-        font-style: italic;
-        margin-top: -10px;
-    }
-    .route-display {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        margin-bottom: 20px;
-        font-size: 18px;
-        font-weight: bold;
-    }
-    .filter-badge {
+    .direct-flight-badge {
         background-color: #4CAF50;
         color: white;
-        padding: 5px 10px;
-        border-radius: 15px;
-        font-size: 12px;
-        margin: 5px;
-        display: inline-block;
-    }
-    .stats-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: bold;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -94,6 +71,8 @@ if 'origin_iata' not in st.session_state:
     st.session_state.origin_iata = None
 if 'destination_iata' not in st.session_state:
     st.session_state.destination_iata = None
+if 'current_non_stop' not in st.session_state:
+    st.session_state.current_non_stop = False
 
 
 def main():
@@ -353,17 +332,22 @@ def main():
         st.markdown("### 🔧 Filtre Avansate")
         
         # BUTON ZBORURI DIRECTE - CU EVIDENȚIERE
+        st.markdown("#### ✈️ Tip Zboruri")
         non_stop = st.checkbox(
-            "✈️ **DOAR ZBORURI DIRECTE (fără escală)**",
+            "**DOAR ZBORURI DIRECTE (fără escală)**",
             value=False,
             help="Bifează pentru a vedea DOAR zboruri directe, fără escală"
         )
         
         if non_stop:
             st.success("✅ **Filtru activ**: Doar zboruri directe!")
+        else:
+            st.info("ℹ️ Se vor afișa toate zborurile (directe și cu escale)")
+        
+        st.markdown("#### 📊 Alte Setări")
         
         max_results = st.slider(
-            "📊 Număr Maxim de Rezultate",
+            "Număr Maxim de Rezultate",
             min_value=10,
             max_value=100,
             value=50,
@@ -476,40 +460,38 @@ def main():
                 </div>
             """, unsafe_allow_html=True)
         
-                # Active filters badges
+        # Active filters - Using Streamlit components instead of raw HTML
+        st.markdown("---")
         st.markdown("#### 🏷️ Filtre Active:")
         
-        # Display filters as Streamlit components instead of HTML
-        cols = st.columns([1, 1, 1, 1])
+        filter_cols = st.columns(5)
         
-        with cols[0]:
+        with filter_cols[0]:
             st.info(f"👥 {adults} {'pasager' if adults == 1 else 'pasageri'}")
         
-        with cols[1]:
-            st.info(f"🎫 {cabin_class}")
+        with filter_cols[1]:
+            cabin_short = {
+                'ECONOMY': 'Economy',
+                'PREMIUM_ECONOMY': 'Prem. Eco',
+                'BUSINESS': 'Business',
+                'FIRST': 'First'
+            }.get(cabin_class, cabin_class)
+            st.info(f"🎫 {cabin_short}")
         
-        with cols[2]:
+        with filter_cols[2]:
             st.info(f"💰 {currency}")
         
-        with cols[3]:
-            st.info(f"📊 Max {max_results}")
+        with filter_cols[3]:
+            if non_stop:
+                st.error("✈️ DOAR DIRECTE")
+            else:
+                st.info("✈️ Toate zborurile")
         
-        cols2 = st.columns([1, 1, 1])
-        
-        with cols2[0]:
+        with filter_cols[4]:
             if return_date:
-                st.info(f"🔄 Dus-întors {return_date.strftime('%d.%m.%Y')}")
+                st.info(f"🔄 Dus-întors")
             else:
                 st.info("➡️ Doar dus")
-        
-        with cols2[1]:
-            if non_stop:
-                st.error("✈️ DOAR ZBORURI DIRECTE")
-            else:
-                st.info("🔄 Cu/fără escale")
-        
-        with cols2[2]:
-            st.info(f"🎫 {cabin_class}")
         
         st.markdown("---")
     
@@ -552,7 +534,7 @@ def main():
         - Dată: {departure_date.strftime('%d.%m.%Y')} {f"- {return_date.strftime('%d.%m.%Y')}" if return_date else ""}
         - Pasageri: {adults}
         - Clasă: {cabin_class}
-        - **Zboruri directe: {'DA ✅' if non_stop else 'NU'}**
+        - **Zboruri directe: {'DA ✅' if non_stop else 'NU ❌'}**
         """
         
         with st.spinner('🔄 Căutăm cele mai bune zboruri...'):
@@ -565,11 +547,12 @@ def main():
                 return_date=return_date.strftime('%Y-%m-%d') if return_date else None,
                 adults=adults,
                 cabin_class=cabin_class,
-                non_stop=non_stop,  # IMPORTANT: Parametrul pentru zboruri directe
+                non_stop=non_stop,
                 max_results=max_results
             )
         
         st.session_state.flights = flights
+        st.session_state.current_non_stop = non_stop  # Save the filter state
         
         # Add to monitor routes
         if enable_monitor:
@@ -594,7 +577,8 @@ def main():
     
     # ============== DISPLAY RESULTS ==============
     if st.session_state.flights:
-        display_results(st.session_state.flights, non_stop if 'non_stop' in locals() else False)
+        current_non_stop = st.session_state.get('current_non_stop', False)
+        display_results(st.session_state.flights, current_non_stop)
     elif origin and destination:
         st.info("👆 **Apasă butonul '🔍 CAUTĂ ZBORURI' pentru a începe căutarea**")
     else:
@@ -618,52 +602,105 @@ def main():
 def display_results(flights, non_stop_filter=False):
     """Display flight search results"""
     
-    # Debug information
+    # Statistics before filtering
     total_flights = len(flights)
     direct_flights_count = len([f for f in flights if f.get('stops', 0) == 0])
+    with_stops_count = total_flights - direct_flights_count
     
-    st.info(f"""
-    📊 **Statistici căutare:**
-    - Total zboruri găsite: **{total_flights}**
-    - Zboruri directe: **{direct_flights_count}**
-    - Zboruri cu escale: **{total_flights - direct_flights_count}**
-    - Filtru "Doar directe" activ: **{'DA ✅' if non_stop_filter else 'NU'}**
-    """)
+    # Show debug info
+    with st.expander("📊 Statistici Căutare", expanded=True):
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Găsite", total_flights)
+        
+        with col2:
+            st.metric("✈️ Directe", direct_flights_count)
+        
+        with col3:
+            st.metric("🔄 Cu Escale", with_stops_count)
+        
+        with col4:
+            if non_stop_filter:
+                st.metric("Filtru", "DOAR DIRECTE", delta="Activ", delta_color="inverse")
+            else:
+                st.metric("Filtru", "Toate", delta="Inactiv", delta_color="off")
     
     # Filter results if non-stop was selected
-    original_count = len(flights)
+    original_flights = flights.copy()
+    
     if non_stop_filter:
         flights = [f for f in flights if f.get('stops', 0) == 0]
-        st.warning(f"🔍 Filtru activ: Afișez doar {len(flights)} zboruri directe din {original_count} total")
+        
+        if len(flights) < total_flights:
+            st.info(f"🔍 **Filtru aplicat:** Afișez {len(flights)} zboruri directe din {total_flights} total")
     
+    # Check if we have results
     if not flights:
-        st.error("❌ **Nu am găsit zboruri care să corespundă criteriilor tale.**")
+        st.error("❌ **Nu am găsit zboruri care să corespundă criteriilor.**")
         
         if non_stop_filter and direct_flights_count == 0:
             st.warning(f"""
-            ### ⚠️ Nu există zboruri directe disponibile pe această rută!
+            ### ⚠️ Nu există zboruri DIRECTE pe această rută!
             
-            **Din {original_count} zboruri găsite, niciun zbor nu este direct.**
-            
-            **Ce poți face:**
-            1. ✅ **Dezactivează** filtrul "Doar zboruri directe" din sidebar
-            2. 🔄 Încearcă alte date de călătorie
-            3. ✈️ Verifică aeroporturi alternative din apropiere
-            4. 📅 Încearcă zile diferite ale săptămânii
+            Am găsit **{total_flights} zboruri**, dar **TOATE au escale**.
             """)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.info("""
+                **1️⃣ Vezi zborurile cu escale:**
+                - Mergi în sidebar
+                - Debifează "DOAR ZBORURI DIRECTE"
+                - Caută din nou
+                """)
+            
+            with col2:
+                st.info("""
+                **2️⃣ Încearcă altă rută:**
+                - Aeroporturi alternative
+                - Date diferite
+                - Orașe apropiate
+                """)
+            
+            # Show top 3 flights with stops as suggestion
+            if original_flights:
+                st.markdown("### 💡 Cele mai bune zboruri cu escale:")
+                cheapest_with_stops = sorted(
+                    original_flights, 
+                    key=lambda x: x.get('price', float('inf'))
+                )[:3]
+                
+                for i, flight in enumerate(cheapest_with_stops, 1):
+                    stops = flight.get('stops', 0)
+                    price = flight.get('price', 0)
+                    airline = flight.get('airline', 'N/A')
+                    duration = FlightFormatter.format_duration(flight.get('duration', 'N/A'))
+                    
+                    st.warning(f"""
+                    **{i}. {airline}** - €{price:.2f}
+                    - 🔄 {stops} {'escală' if stops == 1 else 'escale'}
+                    - ⏱️ {duration}
+                    """)
         else:
             st.info("""
             **Sugestii:**
-            - Încearcă alte date
-            - Verifică dacă există zboruri directe pe această rută
-            - Dezactivează filtrul "Doar zboruri directe"
-            - Încearcă aeroporturi alternative din apropiere
+            - Încearcă alte date de călătorie
+            - Verifică ortografia codurilor IATA
+            - Încearcă aeroporturi alternative
             """)
+        
         return
     
-    st.success(f"✅ **Am găsit {len(flights)} zboruri!**")
+    # Display success message
+    if non_stop_filter:
+        st.success(f"✅ **Găsit {len(flights)} zboruri DIRECTE!**")
+    else:
+        st.success(f"✅ **Găsit {len(flights)} zboruri!**")
     
     # Summary statistics
+    st.markdown("---")
     col1, col2, col3, col4 = st.columns(4)
     
     prices = [f.get('price', 0) for f in flights if f.get('price')]
@@ -673,7 +710,6 @@ def display_results(flights, non_stop_filter=False):
             st.metric(
                 "💰 Cel Mai Ieftin",
                 f"€{min(prices):.2f}",
-                delta=None,
                 help="Cel mai mic preț găsit"
             )
         else:
@@ -685,7 +721,6 @@ def display_results(flights, non_stop_filter=False):
             st.metric(
                 "📊 Preț Mediu",
                 f"€{avg_price:.2f}",
-                delta=None,
                 help="Prețul mediu al zborurilor"
             )
         else:
@@ -696,19 +731,17 @@ def display_results(flights, non_stop_filter=False):
             st.metric(
                 "💎 Cel Mai Scump",
                 f"€{max(prices):.2f}",
-                delta=None,
                 help="Cel mai mare preț găsit"
             )
         else:
             st.metric("💎 Cel Mai Scump", "N/A")
     
     with col4:
-        direct_flights = len([f for f in flights if f.get('stops', 0) == 0])
+        direct_in_results = len([f for f in flights if f.get('stops', 0) == 0])
         st.metric(
             "✈️ Zboruri Directe",
-            f"{direct_flights}/{len(flights)}",
-            delta=None,
-            help="Număr de zboruri directe"
+            f"{direct_in_results}/{len(flights)}",
+            help="Număr de zboruri directe în rezultate"
         )
     
     st.markdown("---")
@@ -770,11 +803,9 @@ def display_table_view(flights):
     
     df_display = df[display_columns].copy()
     
-    # Highlight direct flights
-    def highlight_direct(row):
-        if row.get('stops', 1) == 0:
-            return ['background-color: #e8f5e9'] * len(row)
-        return [''] * len(row)
+    # Add a visual indicator for direct flights
+    if 'stops' in df_display.columns:
+        st.info(f"💡 **Tip:** Zborurile cu 0 escale sunt zboruri DIRECTE")
     
     # Display dataframe
     st.dataframe(
@@ -846,7 +877,7 @@ def display_best_deals(flights):
                 
                 stops = flight.get('stops', 0)
                 if stops == 0:
-                    st.markdown("**✈️ DIRECT**")
+                    st.success("**✈️ ZBOR DIRECT**")
                 else:
                     st.text(f"🔄 {stops} {'escală' if stops == 1 else 'escale'}")
             
@@ -946,8 +977,19 @@ def display_price_analysis(flights):
             st.markdown("#### 📈 Statistici pe Escale")
             stats_by_stops = df.groupby('stops')['price'].agg(['count', 'mean', 'min', 'max'])
             stats_by_stops.columns = ['Număr Zboruri', 'Preț Mediu', 'Preț Minim', 'Preț Maxim']
+            stats_by_stops.index.name = 'Escale'
             stats_by_stops = stats_by_stops.round(2)
             st.dataframe(stats_by_stops, use_container_width=True)
+            
+            # Highlight direct flights
+            direct_stats = stats_by_stops[stats_by_stops.index == 0]
+            if not direct_stats.empty:
+                st.success(f"""
+                ✈️ **Statistici zboruri DIRECTE:**
+                - Număr: {int(direct_stats['Număr Zboruri'].values[0])}
+                - Preț mediu: €{direct_stats['Preț Mediu'].values[0]:.2f}
+                - Cel mai ieftin: €{direct_stats['Preț Minim'].values[0]:.2f}
+                """)
     
     # Summary statistics
     st.markdown("#### 📊 Statistici Generale")
