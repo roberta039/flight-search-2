@@ -6,20 +6,6 @@ class APIConfig:
     """API Configuration Manager"""
     
     @staticmethod
-    def get_amadeus_credentials() -> Dict[str, str]:
-        """Get Amadeus API credentials from Streamlit secrets"""
-        try:
-            return {
-                'api_key': st.secrets['amadeus']['api_key'],
-                'api_secret': st.secrets['amadeus']['api_secret']
-            }
-        except Exception:
-            return {
-                'api_key': 'X0GWDRRoNmn6ORcSkfhOBGjiR75s0PIo',
-                'api_secret': '2sdyh8nvAi89w0iL'
-            }
-    
-    @staticmethod
     def get_rapidapi_key() -> str:
         """Get RapidAPI key from Streamlit secrets"""
         try:
@@ -40,9 +26,9 @@ class AppConfig:
     
     # Rate limiting settings (requests per minute)
     RATE_LIMITS = {
-        'amadeus': 10,
         'rapidapi': 5,
-        'airlabs': 10
+        'airlabs': 10,
+        'skyscanner': 5
     }
     
     # Cache settings (in seconds)
